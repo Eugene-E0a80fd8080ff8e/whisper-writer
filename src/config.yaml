@@ -1,0 +1,39 @@
+misc:
+  hide_main_window: true
+  hide_status_window: false
+  noise_on_completion: false
+  print_to_terminal: true
+model_options:
+  api:
+    provider: openai
+    api_key: null
+    base_url: null
+    model: null
+  common:
+    initial_prompt: Transcribe this audio. Assume this is a general conversation or
+      a business letter. Put all the implied punctuation marks.
+      The language is either English, or Russian, Russian with English words.
+    #language: en
+    temperature: 0.0
+  local:
+    compute_type: default
+    condition_on_previous_text: true
+    device: auto
+    model: large-v3
+    model_path: null
+    vad_filter: false
+  use_api: true
+post_processing:
+  add_trailing_space: true
+  input_method: ydotool
+  remove_capitalization: false
+  remove_trailing_period: false
+  writing_key_press_delay: 0.005
+recording_options:
+  activation_key: F13
+  input_backend: pynput
+  min_duration: 100
+  recording_mode: press_to_toggle
+  sample_rate: 16000
+  silence_duration: 900
+  sound_device: null
