@@ -1,5 +1,4 @@
 import io
-import os
 import numpy as np
 import soundfile as sf
 from faster_whisper import WhisperModel
@@ -69,8 +68,8 @@ def transcribe_api(audio_data):
     """
     model_options = ConfigManager.get_config_section('model_options')
     client = OpenAI(
-        api_key=os.getenv('OPENAI_API_KEY') or None,
-        base_url=model_options['api']['base_url'] or 'https://api.openai.com/v1'
+        api_key=ConfigManager.get_api_key() or None,
+        base_url=ConfigManager.get_api_base_url()
     )
 
     # Convert numpy array to WAV file
@@ -80,7 +79,7 @@ def transcribe_api(audio_data):
     byte_io.seek(0)
 
     response = client.audio.transcriptions.create(
-        model=model_options['api']['model'],
+        model=ConfigManager.get_api_model(),
         file=('audio.wav', byte_io, 'audio/wav'),
         language=model_options['common']['language'],
         prompt=model_options['common']['initial_prompt'],
@@ -116,4 +115,3 @@ def transcribe(audio_data, local_model=None):
         transcription = transcribe_local(audio_data, local_model)
 
     return post_process_transcription(transcription)
-

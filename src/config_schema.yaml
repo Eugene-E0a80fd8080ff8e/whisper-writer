@@ -22,18 +22,26 @@ model_options:
 
   # Configuration options for the OpenAI API
   api:
+    provider:
+      value: openai
+      type: str
+      description: "The API provider to use for transcription."
+      options:
+        - openai
+        - groq
+        - openrouter
     model:
       value: whisper-1
       type: str
-      description: "The model to use for transcription. Currently only 'whisper-1' is available."
+      description: "The model to use for transcription. Must be supported by the selected provider."
     base_url:
       value: https://api.openai.com/v1
       type: str
-      description: "The base URL for the API. Can be changed to use a local API endpoint."
+      description: "The base URL for the API. Can be changed to use a local or compatible endpoint."
     api_key:
       value: null
       type: str
-      description: "Your API key for the OpenAI API. Required for non-local API usage."
+      description: "Your API key for the selected provider. Required for non-local API usage."
 
   # Configuration options for the faster-whisper model
   local:
@@ -161,6 +169,10 @@ misc:
     value: false
     type: bool
     description: "Set to true to hide the status window during operation."
+  hide_main_window:
+    value: false
+    type: bool
+    description: "Set to true to skip showing the main window and start listening immediately."
   noise_on_completion:
     value: false
     type: bool

@@ -1,8 +1,20 @@
-import yaml
 import os
+import yaml
+from dotenv import dotenv_values
 
 class ConfigManager:
     _instance = None
+    _ENV_MISSING = object()
+    _api_env_prefixes = {
+        'openai': 'OPENAI',
+        'groq': 'GROQ',
+        'openrouter': 'OPENROUTER',
+    }
+    _api_default_base_urls = {
+        'openai': 'https://api.openai.com/v1',
+        'groq': 'https://api.groq.com/openai/v1',
+        'openrouter': 'https://openrouter.ai/api/v1',
+    }
 
     def __init__(self):
         """Initialize the ConfigManager instance."""
@@ -24,6 +36,84 @@ class ConfigManager:
         if cls._instance is None:
             raise RuntimeError("ConfigManager not initialized")
         return cls._instance.schema
+
+    @classmethod
+    def get_schema_default(cls, *keys):
+        """Get the default value for a schema entry."""
+        schema = cls.get_schema()
+        for key in keys:
+            if not isinstance(schema, dict):
+                return None
+            schema = schema.get(key)
+            if schema is None:
+                return None
+        if isinstance(schema, dict) and 'value' in schema:
+            return schema['value']
+        return None
+
+    @classmethod
+    def get_api_provider(cls):
+        provider = cls.get_config_value('model_options', 'api', 'provider') or 'openai'
+        return str(provider).lower()
+
+    @classmethod
+    def get_api_env_prefix(cls):
+        provider = cls.get_api_provider()
+        return cls._api_env_prefixes.get(provider, provider.upper())
+
+    @classmethod
+    def get_api_env_var_name(cls, suffix):
+        return f"{cls.get_api_env_prefix()}_{suffix}"
+
+    @classmethod
+    def get_api_env_value(cls, suffix):
+        env_var = cls.get_api_env_var_name(suffix)
+        env_values = cls._load_env_file_values()
+        if env_var in env_values:
+            return env_values[env_var]
+        if env_var in os.environ:
+            return os.environ.get(env_var)
+        return cls._ENV_MISSING
+
+    @classmethod
+    def _load_env_file_values(cls):
+        env_path = cls.get_env_file_path()
+        if os.path.isfile(env_path):
+            return dotenv_values(env_path)
+        return {}
+
+    @classmethod
+    def get_env_file_path(cls):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.abspath(os.path.join(base_dir, '..', '.env'))
+
+    @classmethod
+    def get_api_base_url(cls):
+        env_value = cls.get_api_env_value('BASE_URL')
+        if env_value is not cls._ENV_MISSING:
+            return env_value
+        config_value = cls.get_config_value('model_options', 'api', 'base_url')
+        if config_value:
+            return config_value
+        provider = cls.get_api_provider()
+        return cls._api_default_base_urls.get(provider, cls._api_default_base_urls['openai'])
+
+    @classmethod
+    def get_api_model(cls):
+        env_value = cls.get_api_env_value('MODEL')
+        if env_value is not cls._ENV_MISSING:
+            return env_value
+        config_value = cls.get_config_value('model_options', 'api', 'model')
+        if config_value:
+            return config_value
+        return cls.get_schema_default('model_options', 'api', 'model')
+
+    @classmethod
+    def get_api_key(cls):
+        env_value = cls.get_api_env_value('API_KEY')
+        if env_value is not cls._ENV_MISSING:
+            return env_value
+        return cls.get_config_value('model_options', 'api', 'api_key')
 
     @classmethod
     def get_config_section(cls, *keys):

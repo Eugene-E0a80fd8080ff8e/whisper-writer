@@ -133,9 +133,17 @@ class SettingsWindow(BaseWindow):
 
     def create_line_edit(self, value, key=None):
         widget = QLineEdit(value)
+        if key in ['api_key', 'base_url', 'model']:
+            suffix_map = {
+                'api_key': 'API_KEY',
+                'base_url': 'BASE_URL',
+                'model': 'MODEL',
+            }
+            env_value = ConfigManager.get_api_env_value(suffix_map[key])
+            if env_value is not ConfigManager._ENV_MISSING:
+                widget.setText(env_value or '')
         if key == 'api_key':
             widget.setEchoMode(QLineEdit.Password)
-            widget.setText(os.getenv('OPENAI_API_KEY') or value)
         elif key == 'model_path':
             layout = QHBoxLayout()
             layout.addWidget(widget)
@@ -176,13 +184,19 @@ class SettingsWindow(BaseWindow):
         """Save the settings to the config file and .env file."""
         self.iterate_settings(self.save_setting)
 
-        # Save the API key to the .env file
+        # Save API settings to the .env file
         api_key = ConfigManager.get_config_value('model_options', 'api', 'api_key') or ''
-        set_key('.env', 'OPENAI_API_KEY', api_key)
-        os.environ['OPENAI_API_KEY'] = api_key
+        base_url = ConfigManager.get_config_value('model_options', 'api', 'base_url') or ''
+        model = ConfigManager.get_config_value('model_options', 'api', 'model') or ''
+        for suffix, value in [('API_KEY', api_key), ('BASE_URL', base_url), ('MODEL', model)]:
+            env_var = ConfigManager.get_api_env_var_name(suffix)
+            set_key('.env', env_var, value)
+            os.environ[env_var] = value
 
-        # Remove the API key from the config
+        # Remove API values from the config so .env is the source of truth
         ConfigManager.set_config_value(None, 'model_options', 'api', 'api_key')
+        ConfigManager.set_config_value(None, 'model_options', 'api', 'base_url')
+        ConfigManager.set_config_value(None, 'model_options', 'api', 'model')
 
         ConfigManager.save_config()
         QMessageBox.information(self, 'Settings Saved', 'Settings have been saved. The application will now restart.')

@@ -18,7 +18,7 @@ Once started, the script runs in the background and waits for a keyboard shortcu
 
 You can change the keyboard shortcut (`activation_key`) and recording mode in the [Configuration Options](#configuration-options). While recording and transcribing, a small status window is displayed that shows the current stage of the process (but this can be turned off). Once the transcription is complete, the transcribed text will be automatically written to the active window.
 
-The transcription can either be done locally through the [faster-whisper Python package](https://github.com/SYSTRAN/faster-whisper/) or through a request to [OpenAI's API](https://platform.openai.com/docs/guides/speech-to-text). By default, the app will use a local model, but you can change this in the [Configuration Options](#configuration-options). If you choose to use the API, you will need to either provide your OpenAI API key or change the base URL endpoint.
+The transcription can either be done locally through the [faster-whisper Python package](https://github.com/SYSTRAN/faster-whisper/) or through an OpenAI-compatible API (OpenAI, Groq, OpenRouter, or a local endpoint). By default, the app will use a local model, but you can change this in the [Configuration Options](#configuration-options). If you choose to use the API, set `model_options.api.provider` in `config.yaml` and provide the provider-specific `API_KEY`, `BASE_URL`, and `MODEL` in `.env` (see `.env.example`).
 
 **Fun fact:** Almost the entirety of the initial release of the project was pair-programmed with [ChatGPT-4](https://openai.com/product/gpt-4) and [GitHub Copilot](https://github.com/features/copilot) using VS Code. Practically every line, including most of this README, was written by AI. After the initial prototype was finished, WhisperWriter was used to write a lot of the prompts as well!
 
@@ -101,7 +101,21 @@ python run.py
 ```
 
 #### 5. Configure and start WhisperWriter:
-On first run, a Settings window should appear. Once configured and saved, another window will open. Press "Start" to activate the keyboard listener. Press the activation key (`ctrl+shift+space` by default) to start recording and transcribing to the active window.
+On first run, a Settings window should appear. Once configured and saved, the main window opens. Press "Start" to activate the keyboard listener. Press the activation key (`ctrl+shift+space` by default) to start recording and transcribing to the active window. You can also skip the main window entirely by setting `misc.hide_main_window: true` in `config.yaml`.
+
+### API configuration (.env)
+When `model_options.use_api` is enabled, API settings are read from `.env`. The app prefers values from `.env` over your shell environment. Use `.env.example` as a template.
+
+Example for OpenAI:
+```
+OPENAI_API_KEY="your-openai-key"
+OPENAI_BASE_URL="https://api.openai.com/v1"
+OPENAI_MODEL="gpt-4o-transcribe"
+```
+
+Other providers use the same pattern with a different prefix:
+- `GROQ_API_KEY`, `GROQ_BASE_URL`, `GROQ_MODEL`
+- `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`
 
 ### Configuration Options
 
@@ -112,16 +126,17 @@ WhisperWriter uses a configuration file to customize its behaviour. To set up th
 </p>
 
 #### Model Options
-- `use_api`: Toggle to choose whether to use the OpenAI API or a local Whisper model for transcription. (Default: `false`)
+- `use_api`: Toggle to choose whether to use an OpenAI-compatible API or a local Whisper model for transcription. (Default: `false`)
 - `common`: Options common to both API and local models.
   - `language`: The language code for the transcription in [ISO-639-1 format](https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes). (Default: `null`)
   - `temperature`: Controls the randomness of the transcription output. Lower values make the output more focused and deterministic. (Default: `0.0`)
   - `initial_prompt`: A string used as an initial prompt to condition the transcription. More info: [OpenAI Prompting Guide](https://platform.openai.com/docs/guides/speech-to-text/prompting). (Default: `null`)
 
-- `api`: Configuration options for the OpenAI API. See the [OpenAI API documentation](https://platform.openai.com/docs/api-reference/audio/create?lang=python) for more information.
-  - `model`: The model to use for transcription. Currently, only `whisper-1` is available. (Default: `whisper-1`)
-  - `base_url`: The base URL for the API. Can be changed to use a local API endpoint, such as [LocalAI](https://localai.io/). (Default: `https://api.openai.com/v1`)
-  - `api_key`: Your API key for the OpenAI API. Required for non-local API usage. (Default: `null`)
+- `api`: Configuration options for the API provider (OpenAI-compatible). See the [OpenAI API documentation](https://platform.openai.com/docs/api-reference/audio/create?lang=python) for more information.
+  - `provider`: The API provider to use (`openai`, `groq`, or `openrouter`). (Default: `openai`)
+  - `model`: The model to use for transcription. This can be set in `.env` using the provider prefix (e.g., `OPENAI_MODEL`). (Default: `whisper-1`)
+  - `base_url`: The base URL for the API. This can be set in `.env` using the provider prefix (e.g., `OPENAI_BASE_URL`). (Default: `https://api.openai.com/v1`)
+  - `api_key`: Your API key for the selected provider. This can be set in `.env` using the provider prefix (e.g., `OPENAI_API_KEY`). (Default: `null`)
 
 - `local`: Configuration options for the local Whisper model.
   - `model`: The model to use for transcription. The larger models provide better accuracy but are slower. See [available models and languages](https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages). (Default: `base`)
@@ -150,6 +165,7 @@ WhisperWriter uses a configuration file to customize its behaviour. To set up th
 #### Miscellaneous Options
 - `print_to_terminal`: Set to `true` to print the script status and transcribed text to the terminal. (Default: `true`)
 - `hide_status_window`: Set to `true` to hide the status window during operation. (Default: `false`)
+- `hide_main_window`: Set to `true` to skip showing the main window and start listening immediately. (Default: `false`)
 - `noise_on_completion`: Set to `true` to play a noise after the transcription has been typed out. (Default: `false`)
 
 If any of the configuration options are invalid or not provided, the program will use the default values.

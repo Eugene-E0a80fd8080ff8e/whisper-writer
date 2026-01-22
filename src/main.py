@@ -63,7 +63,10 @@ class WhisperWriterApp(QObject):
             self.status_window = StatusWindow()
 
         self.create_tray_icon()
-        self.main_window.show()
+        if ConfigManager.get_config_value('misc', 'hide_main_window'):
+            self.key_listener.start()
+        else:
+            self.main_window.show()
 
     def create_tray_icon(self):
         """
