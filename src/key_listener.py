@@ -802,6 +802,7 @@ class PynputBackend(InputBackend):
 
     def _translate_key_event(self, native_event) -> tuple[KeyCode, InputEvent]:
         """Translate a pynput event to our internal event representation."""
+#        print("pynput _translate_key_event",native_event)
         pynput_key, is_press = native_event
 #        print( str(pynput_key) )
 
@@ -873,6 +874,10 @@ class PynputBackend(InputBackend):
             self.keyboard.Key.f18: KeyCode.F18,
             self.keyboard.Key.f19: KeyCode.F19,
             self.keyboard.Key.f20: KeyCode.F20,
+            self.keyboard.Key.f21: KeyCode.F21,
+            self.keyboard.Key.f22: KeyCode.F22,
+            self.keyboard.Key.f23: KeyCode.F23,
+            self.keyboard.Key.f24: KeyCode.F24,
 
             # Number keys
             self.keyboard.KeyCode.from_char('1'): KeyCode.ONE,
