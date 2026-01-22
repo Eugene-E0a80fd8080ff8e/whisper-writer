@@ -567,6 +567,18 @@ class EvdevBackend(InputBackend):
             self.evdev.ecodes.KEY_F10: KeyCode.F10,
             self.evdev.ecodes.KEY_F11: KeyCode.F11,
             self.evdev.ecodes.KEY_F12: KeyCode.F12,
+            self.evdev.ecodes.KEY_F13: KeyCode.F13,
+            self.evdev.ecodes.KEY_F14: KeyCode.F14,
+            self.evdev.ecodes.KEY_F15: KeyCode.F15,
+            self.evdev.ecodes.KEY_F16: KeyCode.F16,
+            self.evdev.ecodes.KEY_F17: KeyCode.F17,
+            self.evdev.ecodes.KEY_F18: KeyCode.F18,
+            self.evdev.ecodes.KEY_F19: KeyCode.F19,
+            self.evdev.ecodes.KEY_F20: KeyCode.F20,
+            self.evdev.ecodes.KEY_F21: KeyCode.F21,
+            self.evdev.ecodes.KEY_F22: KeyCode.F22,
+            self.evdev.ecodes.KEY_F23: KeyCode.F23,
+            self.evdev.ecodes.KEY_F24: KeyCode.F24,
 
             # Number keys
             self.evdev.ecodes.KEY_1: KeyCode.ONE,
@@ -790,8 +802,26 @@ class PynputBackend(InputBackend):
 
     def _translate_key_event(self, native_event) -> tuple[KeyCode, InputEvent]:
         """Translate a pynput event to our internal event representation."""
+#        print("pynput _translate_key_event",native_event)
         pynput_key, is_press = native_event
-        key_code = self.key_map.get(pynput_key, KeyCode.SPACE)
+#        print( str(pynput_key) )
+
+        if str(pynput_key)=="<269025153>" : key_code = KeyCode.F13 # KDE remaps F13 to a mysterious "Tools" button. This remaps it back.
+        elif str(pynput_key)=="<269025092>" : key_code = KeyCode.F13
+        elif str(pynput_key)=="<269025093>" : key_code = KeyCode.F14
+        elif str(pynput_key)=="<269025094>" : key_code = KeyCode.F15
+        elif str(pynput_key)=="<269025095>" : key_code = KeyCode.F16
+        elif str(pynput_key)=="<269025096>" : key_code = KeyCode.F17
+        elif str(pynput_key)=="<269025097>" : key_code = KeyCode.F18
+        elif str(pynput_key)=="<269025098>" : key_code = KeyCode.F19
+        elif str(pynput_key)=="<269025099>" : key_code = KeyCode.F20
+        elif str(pynput_key)=="<269025100>" : key_code = KeyCode.F21
+        elif str(pynput_key)=="<269025101>" : key_code = KeyCode.F22
+        elif str(pynput_key)=="<269025102>" : key_code = KeyCode.F23
+        elif str(pynput_key)=="<269025103>" : key_code = KeyCode.F24
+
+        else: key_code = self.key_map.get(pynput_key, KeyCode.SPACE)
+
         event_type = InputEvent.KEY_PRESS if is_press else InputEvent.KEY_RELEASE
         return key_code, event_type
 
@@ -844,6 +874,10 @@ class PynputBackend(InputBackend):
             self.keyboard.Key.f18: KeyCode.F18,
             self.keyboard.Key.f19: KeyCode.F19,
             self.keyboard.Key.f20: KeyCode.F20,
+            self.keyboard.Key.f21: KeyCode.F21,
+            self.keyboard.Key.f22: KeyCode.F22,
+            self.keyboard.Key.f23: KeyCode.F23,
+            self.keyboard.Key.f24: KeyCode.F24,
 
             # Number keys
             self.keyboard.KeyCode.from_char('1'): KeyCode.ONE,
