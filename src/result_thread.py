@@ -32,14 +32,16 @@ class ResultThread(QThread):
     statusSignal = pyqtSignal(str)
     resultSignal = pyqtSignal(str)
 
-    def __init__(self, local_model=None):
+    def __init__(self, local_model=None, binding_name=None):
         """
         Initialize the ResultThread.
 
         :param local_model: Local transcription model (if applicable)
+        :param binding_name: Name of the key binding this recording belongs to (if applicable)
         """
         super().__init__()
         self.local_model = local_model
+        self.binding_name = binding_name
         self.is_recording = False
         self.is_running = True
         self.sample_rate = None
@@ -65,13 +67,17 @@ class ResultThread(QThread):
             if not self.is_running:
                 return
 
+            pipeline_start = time.time()
+
             self.mutex.lock()
             self.is_recording = True
             self.mutex.unlock()
 
             self.statusSignal.emit('recording')
-            ConfigManager.console_print('Recording...')
+            ConfigManager.console_print(f'Recording{self._binding_tag()}...')
+            record_start = time.time()
             audio_data = self._record_audio()
+            record_wall = time.time() - record_start
 
             if not self.is_running:
                 return
@@ -81,15 +87,19 @@ class ResultThread(QThread):
                 return
 
             self.statusSignal.emit('transcribing')
-            ConfigManager.console_print('Transcribing...')
+            ConfigManager.console_print(f'Transcribing{self._binding_tag()}...')
 
             # Time the transcription process
             start_time = time.time()
-            result = transcribe(audio_data, self.local_model)
+            result = transcribe(audio_data, self.local_model, self.binding_name)
             end_time = time.time()
 
             transcription_time = end_time - start_time
             ConfigManager.console_print(f'Transcription completed in {transcription_time:.2f} seconds. Post-processed line: {result}')
+            if ConfigManager.is_verbose():
+                ConfigManager.verbose_print(f"[verbose] stages: recording={record_wall:.2f}s wall, "
+                                            f"transcription={transcription_time:.2f}s, "
+                                            f"total={time.time() - pipeline_start:.2f}s")
 
             if not self.is_running:
                 return
@@ -103,6 +113,10 @@ class ResultThread(QThread):
             self.resultSignal.emit('')
         finally:
             self.stop_recording()
+
+    def _binding_tag(self):
+        """Return a console-friendly tag for the active binding, if any."""
+        return f' [{self.binding_name}]' if self.binding_name else ''
 
     def _record_audio(self):
         """

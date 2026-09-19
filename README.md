@@ -2,6 +2,16 @@
 
 ![version](https://img.shields.io/badge/version-1.0.1-blue)
 
+> **Fork notice (Jan 2026)** — This fork exists to keep a small set of workflow-focused changes (default config + input/key tweaks + API provider env handling) that I use daily.  
+> It is entirely vibecoded and has only been tested with the provided `src/config.yaml`.
+>
+> **What's different (short):**
+> - ships a default config (`src/config.yaml`) and `.env.example`
+> - multiple activation keys bound to separate provider configs (`bindings` in `config.yaml`)
+> - OpenAI-compatible API providers via `.env` (OpenAI, Groq, OpenRouter) plus xAI's native speech-to-text API
+> - adds F13–F24 activation keys (incl. KDE remap quirks)
+> - optional `ydotool`/`dotool` input simulation and `misc.hide_main_window`
+
 <p align="center">
     <img src="./assets/ww-demo-image-02.gif" alt="WhisperWriter demo gif" width="340" height="136">
 </p>
@@ -18,7 +28,7 @@ Once started, the script runs in the background and waits for a keyboard shortcu
 
 You can change the keyboard shortcut (`activation_key`) and recording mode in the [Configuration Options](#configuration-options). While recording and transcribing, a small status window is displayed that shows the current stage of the process (but this can be turned off). Once the transcription is complete, the transcribed text will be automatically written to the active window.
 
-The transcription can either be done locally through the [faster-whisper Python package](https://github.com/SYSTRAN/faster-whisper/) or through an OpenAI-compatible API (OpenAI, Groq, OpenRouter, or a local endpoint). By default, the app will use a local model, but you can change this in the [Configuration Options](#configuration-options). If you choose to use the API, set `model_options.api.provider` in `config.yaml` and provide the provider-specific `API_KEY`, `BASE_URL`, and `MODEL` in `.env` (see `.env.example`).
+The transcription can either be done locally through the [faster-whisper Python package](https://github.com/SYSTRAN/faster-whisper/) or through an API: an OpenAI-compatible one (OpenAI, Groq, OpenRouter, or a local endpoint) or xAI's native speech-to-text API. By default, the app will use a local model, but you can change this in the [Configuration Options](#configuration-options). If you choose to use an API, provide the provider-specific `API_KEY`, `BASE_URL`, and `MODEL` in `.env` (see `.env.example`).
 
 **Fun fact:** Almost the entirety of the initial release of the project was pair-programmed with [ChatGPT-4](https://openai.com/product/gpt-4) and [GitHub Copilot](https://github.com/features/copilot) using VS Code. Practically every line, including most of this README, was written by AI. After the initial prototype was finished, WhisperWriter was used to write a lot of the prompts as well!
 
@@ -100,6 +110,14 @@ pip install -r requirements.txt
 python run.py
 ```
 
+Add `-v` for verbose output (also works with `python src/main.py -v`):
+
+```
+python run.py -v
+```
+
+In verbose mode each transcription logs which binding/model/provider is used, the prompt sent, all response metadata returned by the provider (dumped verbatim), token usage when the provider returns it, an estimated cost (from a small built-in price table, overridable per binding via `price_per_minute`), and timings (recording wall time, request time, total pipeline time).
+
 #### 5. Configure and start WhisperWriter:
 On first run, a Settings window should appear. Once configured and saved, the main window opens. Press "Start" to activate the keyboard listener. Press the activation key (`ctrl+shift+space` by default) to start recording and transcribing to the active window. You can also skip the main window entirely by setting `misc.hide_main_window: true` in `config.yaml`.
 
@@ -116,6 +134,42 @@ OPENAI_MODEL="gpt-4o-transcribe"
 Other providers use the same pattern with a different prefix:
 - `GROQ_API_KEY`, `GROQ_BASE_URL`, `GROQ_MODEL`
 - `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`
+- `XAI_API_KEY`, `XAI_BASE_URL`, `XAI_MODEL` (xAI uses its native `POST /v1/stt` speech-to-text endpoint, not the OpenAI-compatible one)
+
+### Key bindings (multiple providers)
+
+The top-level `bindings` list in `config.yaml` maps several activation keys to separate transcription configurations. For example, F13 for OpenAI and F14 for xAI:
+
+```yaml
+bindings:
+  - name: openai
+    activation_key: F13
+    use_api: true
+    provider: openai          # model/base_url/api_key default to OPENAI_* in .env
+  - name: xai
+    activation_key: F14
+    use_api: true
+    provider: xai
+    model: grok-voice-transcribe-2.0
+  - name: local               # a binding may also use the local Whisper model
+    activation_key: F15
+    use_api: false            # uses model_options.local
+```
+
+Each entry supports:
+- `name`: label used in the console output (defaults to the provider name)
+- `activation_key`: keyboard shortcut, same syntax as `recording_options.activation_key`
+- `use_api`: API vs local model for this binding (defaults to `model_options.use_api`)
+- `provider`: `openai`, `groq`, `openrouter`, or `xai`
+- optional `model`, `base_url`, `api_key` overrides with precedence: binding value → provider `*_MODEL`/`*_BASE_URL`/`*_API_KEY` in `.env` → provider default
+- optional `initial_prompt`, `language`, and `temperature` overrides falling back to `model_options.common` (also honored by local-model bindings)
+- optional `stt_options` (xAI only): extra `POST /v1/stt` form fields such as `format: true` or `keyterm` lists
+
+Notes:
+- The recording mode and post-processing options remain global.
+- While a recording is in progress, pressing **any** binding's key ends it (in `press_to_toggle`/`hold_to_record` the recording is finalized and the text is still transcribed and typed out; in `continuous` it stops the listening loop). The key that ended the recording does not automatically start its own binding — press it again to start a fresh recording.
+- xAI's endpoint has no `prompt`/`temperature` parameters; `initial_prompt` and `temperature` are ignored (with a console notice) for `xai` bindings.
+- Bindings are edited by hand in `config.yaml`; the Settings window still manages the global options. If no `bindings` list exists, the app falls back to the legacy single-key setup (`recording_options.activation_key` + `model_options`).
 
 ### Configuration Options
 

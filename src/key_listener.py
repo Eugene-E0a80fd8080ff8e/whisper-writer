@@ -280,7 +280,7 @@ class KeyListener:
         """Initialize the KeyListener with backends and activation keys."""
         self.backends = []
         self.active_backend = None
-        self.key_chord = None
+        self.key_chords = {}  # binding name -> KeyChord
         self.callbacks = {
             "on_activate": [],
             "on_deactivate": []
@@ -352,10 +352,29 @@ class KeyListener:
             self.active_backend.stop()
 
     def load_activation_keys(self):
-        """Load activation keys from configuration."""
-        key_combination = ConfigManager.get_config_value('recording_options', 'activation_key')
-        keys = self.parse_key_combination(key_combination)
-        self.set_activation_keys(keys)
+        """Load activation key chords for all configured bindings."""
+        self.key_chords = {}
+        seen_combinations = {}
+        for binding in ConfigManager.get_bindings():
+            name = binding.get('name')
+            combination = binding.get('activation_key')
+            if not combination:
+                print(f"Binding '{name}' has no activation_key and will be ignored.")
+                continue
+            keys = self.parse_key_combination(combination)
+            if not keys:
+                print(f"Binding '{name}' has an unrecognized activation_key '{combination}' and will be ignored.")
+                continue
+            signature = frozenset(
+                key if isinstance(key, frozenset) else frozenset({key})
+                for key in keys
+            )
+            if signature in seen_combinations:
+                print(f"Warning: bindings '{seen_combinations[signature]}' and '{name}' share activation key "
+                      f"'{combination}'. Only '{seen_combinations[signature]}' will trigger.")
+                continue
+            seen_combinations[signature] = name
+            self.key_chords[name] = KeyChord(keys)
 
     def parse_key_combination(self, combination_string: str) -> Set[KeyCode | frozenset[KeyCode]]:
         """Parse a string representation of key combination into a set of KeyCodes."""
@@ -379,34 +398,36 @@ class KeyListener:
                     print(f"Unknown key: {key}")
         return keys
 
-    def set_activation_keys(self, keys: Set[KeyCode]):
-        """Set the activation keys for the KeyChord."""
-        self.key_chord = KeyChord(keys)
-
     def on_input_event(self, event):
-        """Handle input events and trigger callbacks if the key chord becomes active or inactive."""
-        if not self.key_chord or not self.active_backend:
+        """Handle input events and trigger callbacks for the binding whose chord toggles."""
+        if not self.key_chords or not self.active_backend:
             return
 
         key, event_type = event
 
-        was_active = self.key_chord.is_active()
-        is_active = self.key_chord.update(key, event_type)
+        activated = False
+        for name, chord in self.key_chords.items():
+            was_active = chord.is_active()
+            is_active = chord.update(key, event_type)
 
-        if not was_active and is_active:
-            self._trigger_callbacks("on_activate")
-        elif was_active and not is_active:
-            self._trigger_callbacks("on_deactivate")
+            if not was_active and is_active:
+                # When several chords become active on the same event, the
+                # first listed binding wins; others are not triggered.
+                if not activated:
+                    self._trigger_callbacks("on_activate", name)
+                    activated = True
+            elif was_active and not is_active:
+                self._trigger_callbacks("on_deactivate", name)
 
     def add_callback(self, event: str, callback: Callable):
         """Add a callback function for a specific event."""
         if event in self.callbacks:
             self.callbacks[event].append(callback)
 
-    def _trigger_callbacks(self, event: str):
-        """Trigger all callbacks associated with a specific event."""
+    def _trigger_callbacks(self, event: str, binding_name=None):
+        """Trigger all callbacks associated with a specific event, passing the binding name."""
         for callback in self.callbacks.get(event, []):
-            callback()
+            callback(binding_name)
 
     def update_activation_keys(self):
         """Update activation keys from the current configuration."""
@@ -874,10 +895,10 @@ class PynputBackend(InputBackend):
             self.keyboard.Key.f18: KeyCode.F18,
             self.keyboard.Key.f19: KeyCode.F19,
             self.keyboard.Key.f20: KeyCode.F20,
-            self.keyboard.Key.f21: KeyCode.F21,
-            self.keyboard.Key.f22: KeyCode.F22,
-            self.keyboard.Key.f23: KeyCode.F23,
-            self.keyboard.Key.f24: KeyCode.F24,
+            #self.keyboard.Key.f21: KeyCode.F21,
+            #self.keyboard.Key.f22: KeyCode.F22,
+            #self.keyboard.Key.f23: KeyCode.F23,
+            #self.keyboard.Key.f24: KeyCode.F24,
 
             # Number keys
             self.keyboard.KeyCode.from_char('1'): KeyCode.ONE,

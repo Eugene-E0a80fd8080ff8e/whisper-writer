@@ -1,3 +1,30 @@
+# Key bindings: each entry maps a keyboard shortcut to its own transcription
+# provider. Takes precedence over the legacy single activation_key / model_options
+# setup below. Settings for each binding fall back to the provider's _API_KEY,
+# _BASE_URL and _MODEL values in .env, then to provider defaults.
+# Every binding may also override initial_prompt, language and temperature
+# (falling back to model_options.common). Note: xAI ignores initial_prompt and
+# temperature (its /v1/stt endpoint has no such parameters).
+bindings:
+  - name: openai
+    activation_key: F13
+    use_api: true
+    provider: openai
+    # model, base_url and api_key default to the OPENAI_* values in .env
+    # initial_prompt: ...    # overrides model_options.common.initial_prompt
+    # language: en           # overrides model_options.common.language
+    # temperature: 0.0       # overrides model_options.common.temperature
+  - name: xai
+    activation_key: F14
+    use_api: true
+    provider: xai
+    model: grok-voice-transcribe-2.0
+    # authenticated via XAI_API_KEY in .env; extra /v1/stt form fields (format,
+    # keyterm, ...) can be passed via stt_options, e.g.:
+    # stt_options:
+    #   format: true
+    #   keyterm:
+    #     - WhisperWriter
 misc:
   hide_main_window: true
   hide_status_window: false
@@ -12,7 +39,7 @@ model_options:
   common:
     initial_prompt: Transcribe this audio. Assume this is a general conversation or
       a business letter. Put all the implied punctuation marks.
-      The language is either English, or Russian, Russian with English words.
+      The language is either English, or Russian, or Russian with some English words.
     #language: en
     temperature: 0.0
   local:

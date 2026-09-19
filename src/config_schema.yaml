@@ -25,11 +25,12 @@ model_options:
     provider:
       value: openai
       type: str
-      description: "The API provider to use for transcription."
+      description: "The API provider to use for transcription. Used for the default/legacy configuration; per-key bindings can override this."
       options:
         - openai
         - groq
         - openrouter
+        - xai
     model:
       value: whisper-1
       type: str

@@ -48,11 +48,13 @@ class WhisperWriterApp(QObject):
         self.key_listener.add_callback("on_activate", self.on_activation)
         self.key_listener.add_callback("on_deactivate", self.on_deactivation)
 
-        model_options = ConfigManager.get_config_section('model_options')
-        model_path = model_options.get('local', {}).get('model_path')
-        self.local_model = create_local_model() if not model_options.get('use_api') else None
+        # Only load the local model upfront when at least one binding uses it
+        self.local_model = None
+        if any(not ConfigManager.binding_uses_api(binding) for binding in ConfigManager.get_bindings()):
+            self.local_model = create_local_model()
 
         self.result_thread = None
+        self.active_binding = None
 
         self.main_window = MainWindow()
         self.main_window.openSettings.connect(self.settings_window.show)
@@ -122,36 +124,42 @@ class WhisperWriterApp(QObject):
             )
             self.initialize_components()
 
-    def on_activation(self):
+    def on_activation(self, binding_name=None):
         """
-        Called when the activation key combination is pressed.
+        Called when the activation key combination for a binding is pressed.
+        While a recording is in progress, any binding's key ends it (it does
+        not start the newly pressed binding).
         """
         if self.result_thread and self.result_thread.isRunning():
             recording_mode = ConfigManager.get_config_value('recording_options', 'recording_mode')
-            if recording_mode == 'press_to_toggle':
+            if recording_mode in ('press_to_toggle', 'hold_to_record'):
+                # Finalize the current recording; the result is still
+                # transcribed and typed out.
                 self.result_thread.stop_recording()
             elif recording_mode == 'continuous':
                 self.stop_result_thread()
+            # voice_activity_detection: recording stops on silence; ignore.
             return
 
-        self.start_result_thread()
+        self.start_result_thread(binding_name)
 
-    def on_deactivation(self):
+    def on_deactivation(self, binding_name=None):
         """
-        Called when the activation key combination is released.
+        Called when the activation key combination for a binding is released.
         """
         if ConfigManager.get_config_value('recording_options', 'recording_mode') == 'hold_to_record':
-            if self.result_thread and self.result_thread.isRunning():
+            if self.result_thread and self.result_thread.isRunning() and binding_name == self.active_binding:
                 self.result_thread.stop_recording()
 
-    def start_result_thread(self):
+    def start_result_thread(self, binding_name=None):
         """
-        Start the result thread to record audio and transcribe it.
+        Start the result thread to record audio and transcribe it for the given binding.
         """
         if self.result_thread and self.result_thread.isRunning():
             return
 
-        self.result_thread = ResultThread(self.local_model)
+        self.active_binding = binding_name
+        self.result_thread = ResultThread(self.local_model, binding_name)
         if not ConfigManager.get_config_value('misc', 'hide_status_window'):
             self.result_thread.statusSignal.connect(self.status_window.updateStatus)
             self.status_window.closeSignal.connect(self.stop_result_thread)
@@ -175,7 +183,7 @@ class WhisperWriterApp(QObject):
             AudioPlayer(os.path.join('assets', 'beep.wav')).play(block=True)
 
         if ConfigManager.get_config_value('recording_options', 'recording_mode') == 'continuous':
-            self.start_result_thread()
+            self.start_result_thread(self.active_binding)
         else:
             self.key_listener.start()
 
@@ -187,5 +195,14 @@ class WhisperWriterApp(QObject):
 
 
 if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='WhisperWriter: speech-to-text to the active window.')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='verbose output: model in use, prompt sent, response metadata, '
+                             'token usage and cost estimates, and timings')
+    args, _unknown = parser.parse_known_args()
+    ConfigManager.set_verbose(args.verbose)
+
     app = WhisperWriterApp()
     app.run()
