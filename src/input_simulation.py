@@ -6,18 +6,22 @@ from pynput.keyboard import Controller as PynputController
 
 from utils import ConfigManager
 
-def run_command_or_exit_on_failure(command):
+def run_command_or_report_failure(command):
     """
-    Run a shell command and exit if it fails.
+    Run a shell command and report failures without killing the app.
 
     Args:
         command (list): The command to run as a list of strings.
+
+    Returns:
+        bool: True if the command succeeded, False otherwise.
     """
     try:
         subprocess.run(command, check=True)
+        return True
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {e}")
-        exit(1)
+        return False
 
 class InputSimulator:
     """
@@ -88,7 +92,7 @@ class InputSimulator:
             interval (float): The interval between keystrokes in seconds.
         """
         cmd = "ydotool"
-        run_command_or_exit_on_failure([
+        run_command_or_report_failure([
             cmd,
             "type",
             "--key-delay",

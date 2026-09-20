@@ -457,6 +457,10 @@ class EvdevBackend(InputBackend):
 
     def start(self):
         """Start the evdev backend."""
+        if self.thread is not None and self.thread.is_alive():
+            # Already listening; starting again would re-open every input device.
+            return
+
         import evdev
         import threading
         self.evdev = evdev
@@ -802,6 +806,14 @@ class PynputBackend(InputBackend):
             self.mouse = mouse
             self.key_map = self._create_key_map()
 
+        if self._listeners_alive():
+            # Already listening. Every pynput listener opens its own X
+            # connection, so creating a new one on each start() leaks X
+            # clients until the server refuses new connections
+            # ("Maximum number of clients reached").
+            return
+
+        self.stop()
         self.keyboard_listener = self.keyboard.Listener(
             on_press=self._on_keyboard_press,
             on_release=self._on_keyboard_release
@@ -811,6 +823,11 @@ class PynputBackend(InputBackend):
         )
         self.keyboard_listener.start()
         self.mouse_listener.start()
+
+    def _listeners_alive(self):
+        """Check whether both pynput listeners are running."""
+        listeners = (self.keyboard_listener, self.mouse_listener)
+        return all(listener is not None and listener.is_alive() for listener in listeners)
 
     def stop(self):
         """Stop listening for keyboard and mouse events."""
