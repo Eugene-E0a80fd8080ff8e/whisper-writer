@@ -1,0 +1,39 @@
+[project]
+name = "whisper-writer"
+version = "1.0.1"
+description = "Speech-to-text app that types Whisper transcriptions into the active window"
+readme = "README.md"
+license = { text = "GPL-3.0-only" }
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "audioplayer==0.6",
+    "faster-whisper==1.0.2",
+    "numpy==1.24.3",
+    "openai==1.28.0",
+    "pycairo==1.28.0 ; sys_platform == 'linux'",
+    "pygobject==3.48.2 ; sys_platform == 'linux'",
+    "pynput==1.7.6",
+    "pyqt5==5.15.10",
+    "python-dotenv==1.0.0",
+    "pyyaml==6.0.1",
+    "requests==2.31.0",
+    "setuptools>=70,<81",
+    "sounddevice==0.4.6",
+    "soundfile==0.12.1",
+    "webrtcvad-wheels==2.0.11.post1",
+]
+
+[tool.uv]
+package = false
+# faster-whisper 1.0.2 still passes local_dir_use_symlinks, which huggingface-hub 1.x removed.
+# openai 1.28.0 still passes proxies= to httpx.Client, which httpx 0.28 removed.
+constraint-dependencies = [
+    "av==11.0.0",
+    "ctranslate2==4.2.1",
+    "httpx>=0.27,<0.28",
+    "huggingface-hub==0.20.1",
+    "onnxruntime==1.16.3",
+    "pyqt5-qt5==5.15.2",
+    "pyqt5-sip==12.13.0",
+    "tokenizers==0.15.0",
+]

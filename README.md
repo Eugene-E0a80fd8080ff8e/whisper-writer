@@ -38,7 +38,7 @@ The transcription can either be done locally through the [faster-whisper Python 
 Before you can run this app, you'll need to have the following software installed:
 
 - Git: [https://git-scm.com/downloads](https://git-scm.com/downloads)
-- Python `3.11`: [https://www.python.org/downloads/](https://www.python.org/downloads/)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/). The project is pinned to Python 3.10, and `uv sync` downloads that interpreter if it is not already installed.
 
 If you want to run `faster-whisper` on your GPU, you'll also need to install the following NVIDIA libraries:
 
@@ -50,7 +50,7 @@ If you want to run `faster-whisper` on your GPU, you'll also need to install the
 
 The below was taken directly from the [`faster-whisper` README](https://github.com/SYSTRAN/faster-whisper?tab=readme-ov-file#gpu):
 
-**Note:** The latest versions of `ctranslate2` support CUDA 12 only. For CUDA 11, the current workaround is downgrading to the `3.24.0` version of `ctranslate2` (This can be done with `pip install --force-reinsall ctranslate2==3.24.0`).
+**Note:** The latest versions of `ctranslate2` support CUDA 12 only. For CUDA 11, the current workaround is downgrading to the `3.24.0` version of `ctranslate2` (`uv pip install --reinstall "ctranslate2==3.24.0"`). The project lock pins `ctranslate2==4.2.1`, so the next `uv sync` restores that pin.
 
 There are multiple ways to install the NVIDIA libraries mentioned above. The recommended way is described in the official NVIDIA documentation, but we also suggest other installation methods below.
 
@@ -58,14 +58,14 @@ There are multiple ways to install the NVIDIA libraries mentioned above. The rec
 
 The libraries (cuBLAS, cuDNN) are installed in these official NVIDIA CUDA Docker images: `nvidia/cuda:12.0.0-runtime-ubuntu20.04` or `nvidia/cuda:12.0.0-runtime-ubuntu22.04`.
 
-#### Install with `pip` (Linux only)
+#### Install with uv (Linux only)
 
-On Linux these libraries can be installed with `pip`. Note that `LD_LIBRARY_PATH` must be set before launching Python.
+On Linux these libraries can be installed into the project environment. Note that `LD_LIBRARY_PATH` must be set before launching Python.
 
 ```bash
-pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
+uv pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
 
-export LD_LIBRARY_PATH=`python3 -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + ":" + os.path.dirname(nvidia.cudnn.lib.__file__))'`
+export LD_LIBRARY_PATH=`uv run python -c 'import os; import nvidia.cublas.lib; import nvidia.cudnn.lib; print(os.path.dirname(nvidia.cublas.lib.__file__) + ":" + os.path.dirname(nvidia.cudnn.lib.__file__))'`
 ```
 
 **Note**: Version 9+ of `nvidia-cudnn-cu12` appears to cause issues due its reliance on cuDNN 9 (Faster-Whisper does not currently support cuDNN 9). Ensure your version of the Python package is for cuDNN 8.
@@ -86,39 +86,29 @@ git clone https://github.com/savbell/whisper-writer
 cd whisper-writer
 ```
 
-#### 2. Create a virtual environment and activate it:
+#### 2. Install the project environment:
 
 ```
-python -m venv venv
-
-# For Linux and macOS:
-source venv/bin/activate
-
-# For Windows:
-venv\Scripts\activate
+uv sync
 ```
 
-#### 3. Install the required packages:
+This creates `.venv` with Python 3.10 and the locked dependencies from `uv.lock`.
+
+#### 3. Run the Python code:
 
 ```
-pip install -r requirements.txt
+uv run python run.py
 ```
 
-#### 4. Run the Python code:
+Add `-v` for verbose output (also works with `uv run python src/main.py -v`):
 
 ```
-python run.py
-```
-
-Add `-v` for verbose output (also works with `python src/main.py -v`):
-
-```
-python run.py -v
+uv run python run.py -v
 ```
 
 In verbose mode each transcription logs which binding/model/provider is used, the prompt sent, all response metadata returned by the provider (dumped verbatim), token usage when the provider returns it, an estimated cost (from a small built-in price table, overridable per binding via `price_per_minute`), and timings (recording wall time, request time, total pipeline time).
 
-#### 5. Configure and start WhisperWriter:
+#### 4. Configure and start WhisperWriter:
 On first run, a Settings window should appear. Once configured and saved, the main window opens. Press "Start" to activate the keyboard listener. Press the activation key (`ctrl+shift+space` by default) to start recording and transcribing to the active window. You can also skip the main window entirely by setting `misc.hide_main_window: true` in `config.yaml`.
 
 ### API configuration (.env)
@@ -204,7 +194,7 @@ WhisperWriter uses a configuration file to customize its behaviour. To set up th
 - `activation_key`: The keyboard shortcut to activate the recording and transcribing process. Separate keys with a `+`. (Default: `ctrl+shift+space`)
 - `input_backend`: The input backend to use for detecting key presses. `auto` will try to use the best available backend. (Default: `auto`)
 - `recording_mode`: The recording mode to use. Options include `continuous` (auto-restart recording after pause in speech until activation key is pressed again), `voice_activity_detection` (stop recording after pause in speech), `press_to_toggle` (stop recording when activation key is pressed again), `hold_to_record` (stop recording when activation key is released). (Default: `continuous`)
-- `sound_device`: The numeric index of the sound device to use for recording. To find device numbers, run `python -m sounddevice`. (Default: `null`)
+- `sound_device`: The numeric index of the sound device to use for recording. To find device numbers, run `uv run python -m sounddevice`. (Default: `null`)
 - `sample_rate`: The sample rate in Hz to use for recording. (Default: `16000`)
 - `silence_duration`: The duration in milliseconds to wait for silence before stopping the recording. (Default: `900`)
 - `min_duration`: The minimum duration in milliseconds for a recording to be processed. Recordings shorter than this will be discarded. (Default: `100`)
